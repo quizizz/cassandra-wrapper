@@ -1,4 +1,5 @@
-import { ArrayOrObject, DseClientOptions, QueryOptions, types } from "cassandra-driver";
+import { ArrayOrObject, concurrent, DseClientOptions, QueryOptions, types, ValueCallback } from "cassandra-driver";
+import { Readable } from 'stream';
 
 export class Client {
     constructor(
@@ -9,9 +10,9 @@ export class Client {
         emiiter?: any,
     );
 
-    connect(): Promise<void | Error>;
+    connect(): Promise<void|Error>;
     
-    execute(query: string, params?: ArrayOrObject, queryOptions?: QueryOptions): Promise<types.ResultSet | Error>;
+    execute(query: string, params?: ArrayOrObject, queryOptions?: QueryOptions): Promise<types.ResultSet|Error>;
     
     batchExecute(
         queries: Array<string|{query: string, params?: ArrayOrObject}>,
@@ -25,4 +26,29 @@ export class Client {
         rowCallback: (n: number, row: types.Row) => void,
         callback?: ValueCallback<types.ResultSet>
     ): void;
+
+    eachRow(
+        query: string,
+        params: ArrayOrObject,
+        rowCallback: (n: number, row: types.Row) => void,
+        callback?: ValueCallback<types.ResultSet>
+    ): void;
+
+    eachRow(
+        query: string,
+        rowCallback: (n: number, row: types.Row) => void
+    ): void;
+
+    concurrentExecute(
+        query: string,
+        parameters: any[][]|Readable,
+        options?: concurrent.Options
+    ): Promise<concurrent.ResultSetGroup|Error>;
+
+    concurrentExecute(
+        query: string,
+        options?: concurrent.Options
+    ): Promise<concurrent.ResultSetGroup|Error>;
+
+    shutdown(): Promise<void|Error>;
 }

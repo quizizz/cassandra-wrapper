@@ -52,6 +52,7 @@ async function runTests() {
   await executeExample(client);
   await batchExecuteExample(client);
   await concurrentExecuteExample(client);
+  await client.shutdown();
   process.exit(0);
 }
 

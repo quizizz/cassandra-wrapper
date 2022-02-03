@@ -132,6 +132,17 @@ class Client {
         }
     }
 
+    async shutdown() {
+        try {
+            await this.client.shutdown();
+            this._success('Successfully disconnected all the client connections to all the cassandra hosts.')
+        } catch (err) {
+            this._error('Encountered error while shutting down client connections.', err);
+            Promise.reject(err);
+        }
+
+    }
+
     _logMessage(msgType, message, data) {
         if (this.emitter != null) {
             this.emitter.emit(msgType, {
