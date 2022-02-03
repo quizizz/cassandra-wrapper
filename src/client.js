@@ -1,12 +1,17 @@
 const cassandra = require('cassandra-driver');
 
+/**
+ * Wrapper for DataStax'x nodeJs cassandra driver.
+ * API reference: https://docs.datastax.com/en/developer/nodejs-driver/4.6/api/
+ */
+
 class Client {
     /**
      * Initializes a cassandra client instance.
      * 
      * @param {string} clientName: Name to identify a client, could be application/worker/service's name.   
      * @param {string} keyspace: cassandra's keyspace on which client intends to execute queries.  
-     * @param {string} clientDataCenter: needed to use DefaultLoadBalancingPolicy for load balanding the 
+     * @param {string} clientDataCenter: needed to use DefaultLoadBalancingPolicy for load balancing the 
      *                              requests to cassandra nodes.
      * @param {Object} clientOptions: Client and query configuration options while setting up the connection. 
      * @param {Object} emitter: to emit logs. 
@@ -18,6 +23,8 @@ class Client {
             contactPoints: ['localhost'],
             // required retry logic to be implemented in business logic
             policies: {
+                // TODO: This policy neither retries or nor ignores. All the methods with this policy 
+                // throw exceptions. Thus, a retry policy needs to be added to the wrapper itself. 
                 retry: new cassandra.policies.retry.FallthroughRetryPolicy(),
             },
             queryOptions: {
@@ -70,7 +77,7 @@ class Client {
     async execute(query, params, queryOptions) {
         try {
             const result = await this.client.execute(query, params, queryOptions);
-            this._success(`${this.clientName} info - Successfully executed the query.`);
+            this._success('Successfully executed the query.');
             return result;
         } catch (err) {
             this._error(`Encountered error while executing query "${err.query}" on coordinator "${err.coordinator}".\n`, err.stack);
@@ -84,7 +91,7 @@ class Client {
     async batchExecute(queries, queryOptions) {
         try {
             const result = await this.client.batch(queries, queryOptions);
-            this._success(`${this.clientName} info - Successfully batch executed the query.`);
+            this._success('Successfully batch executed the query.');
             return result;
         } catch (err) {
             this._error(`Encountered error while batch executing query "${err.query}" on coordinator "${err.coordinator}".\n`, err.stack);
@@ -103,6 +110,26 @@ class Client {
      */
     eachRow(query, params, queryOptions, rowCallback, callback) {
         this.client.eachRow(query, params, queryOptions, rowCallback, callback);
+    }
+
+
+    /**
+     * Executes queries concurrently.
+     * For usage examples, refer https://docs.datastax.com/en/developer/nodejs-driver/4.6/api/module.concurrent/.
+     * 
+     * @param {String} query - query to be executed 
+     * @param {any[][]|Readable} params - params for query
+     * @param {Object} options - concurrent execution options.
+     */
+    async concurrentExecute(query, params, options) {
+        try {
+            const result = await cassandra.concurrent.executeConcurrent(this, query, params, options);
+            this._success('Successfully executed the queries concurrently.');
+            return result;
+        } catch (err) {
+            this._error(`Encountered error while batch executing query "${err.query}" on coordinator "${err.coordinator}".\n`, err.stack);
+            Promise.reject(err);
+        }
     }
 
     _logMessage(msgType, message, data) {

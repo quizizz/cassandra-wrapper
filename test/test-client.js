@@ -30,10 +30,28 @@ async function batchExecuteExample(client) {
     console.log(result);
 }
 
+function randomNumber() {
+  // returns 6 digit number
+  return Math.floor(100000 + Math.random() * 900000);
+}
+async function concurrentExecuteExample(client) {
+  const query = 'INSERT INTO employees (eid, department, joining_date, name) VALUES (?, ?, ?, ?)';
+  const params = [
+    [randomNumber(), 'sales', '2002-10-19', 'rk'],
+    [randomNumber(), 'marketing', '2010-01-31', 'kate'],
+    [randomNumber(), 'product', '2011-05-10', 'helen'],
+    [randomNumber(), 'accounts', '2009-10-22', 'ann'],
+  ];
+
+  const result = await client.concurrentExecute(query, params);
+  console.log(result);
+}
+
 async function runTests() {
   const client = await connectClient();
   await executeExample(client);
   await batchExecuteExample(client);
+  await concurrentExecuteExample(client);
   process.exit(0);
 }
 
