@@ -4,10 +4,14 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function connectClient() {
-  const contactPoints = ['54.242.206.48', '18.209.107.91', '3.95.39.29'];
-
-  const client = new Client('testClient', 'quizizztest', 'us-east-1', { contactPoints });
+async function connectClient(contactPoints) {
+  const clientName = 'testClient';
+  const options = {
+    contactPoints,
+    keyspace: 'quizizztest',
+    localDataCenter: 'us-east-1',
+  };
+  const client = new Client(clientName, null, options);
   await client.connect();
   return client;
 }
@@ -48,7 +52,27 @@ async function concurrentExecuteExample(client) {
 }
 
 async function runTests() {
-  const client = await connectClient();
+  if (process.argv.length < 3) {
+    console.log(
+        'Please provide command line arguments to test cassandra client.\n' +
+        'Expected arguments in order are: `contact-points`. Example....\n' + 
+        'node test-client.js contact-points=1.2.3.4,4.5.6.7'
+    );
+    process.exit(1);
+  }
+  const args = process.argv.slice(2);
+  const kwargs = {};
+  const expectedKeywords = ['contact-points'];
+  for (let arg of args) {
+    const kwarg = arg.split('=');
+    if (!expectedKeywords.includes(kwarg[0])) {
+        console.log('Unexpected command line argument keyword. Only expected keywords are: ', expectedKeywords);
+        process.exit(1);       
+    }
+    kwargs[kwarg[0]] = kwarg[1];
+  }
+  const contactPoints = kwargs['contact-points'].split(',');
+  const client = await connectClient(contactPoints);
   await executeExample(client);
   await batchExecuteExample(client);
   await concurrentExecuteExample(client);

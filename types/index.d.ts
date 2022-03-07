@@ -4,10 +4,8 @@ import { Readable } from 'stream';
 export class Client {
     constructor(
         clientName: string, 
-        keyspace: string, 
-        clientDataCenter: string, 
+        emiiter: any,
         clientOptions: DseClientOptions, 
-        emiiter?: any,
     );
 
     connect(): Promise<void|Error>;

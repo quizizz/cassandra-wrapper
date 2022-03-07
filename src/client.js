@@ -10,54 +10,42 @@ class Client {
      * Initializes a cassandra client instance.
      * 
      * @param {string} clientName: Name to identify a client, could be application/worker/service's name.   
-     * @param {string} keyspace: cassandra's keyspace on which client intends to execute queries.  
-     * @param {string} clientDataCenter: needed to use DefaultLoadBalancingPolicy for load balancing the 
-     *                              requests to cassandra nodes.
-     * @param {Object} clientOptions: Client and query configuration options while setting up the connection. 
      * @param {Object} emitter: to emit logs. 
+     * @param {Object} clientOptions: Client and query configuration options while setting up the connection. 
      */
-    constructor(clientName, keyspace, clientDataCenter, clientOptions, emitter) {
+    constructor(clientName, emitter, clientOptions) {
         this.clientName = clientName;
 
-        this.defaultClientOptions = {
+        this.clientOptions = Object.assign({
             contactPoints: ['localhost'],
-            // required retry logic to be implemented in business logic
-            policies: {
-                // TODO: This policy neither retries or nor ignores. All the methods with this policy 
-                // throw exceptions. Thus, a retry policy needs to be added to the wrapper itself. 
-                retry: new cassandra.policies.retry.FallthroughRetryPolicy(),
-            },
-            queryOptions: {
-                prepare: true,
-            }
-        }
-        // common config defaults should go here.
-        this.clientOptions = Object.assign(
-            this.defaultClientOptions, 
-            clientOptions,
-            { 
-                applicationName: clientName,
-                keyspace,
-                localDataCenter: clientDataCenter,
+            keyspace: 'dummy_keyspace', 
+            localDataCenter: 'client_data_center', // required by datastax client to perform load balancing.
+        }, clientOptions, {
+                policies: Object.assign({
+                    // TODO: This policy neither retries or nor ignores. All the methods with this policy 
+                    // throw exceptions. Thus, a retry policy needs to be added to the wrapper itself. 
+                    retry: new cassandra.policies.retry.FallthroughRetryPolicy(),
+                }, clientOptions?.policies),
+                queryOptions: Object.assign({
+                    prepare: true,
+                }, clientOptions?.queryOptions),
             }
         );
+        this.clientOptions.applicationName = clientName;
+        console.log('Cassandra client options: ', this.clientOptions);
         this.emitter = emitter;
         this.client = new cassandra.Client(this.clientOptions);
     }
 
     async connect() {
-        try {
-            this.client.on('log', (level, loggerName, message, furtherInfo) => {
-                if (level === 'verbose') {
-                    return;
-                }
-                this._logMessage(level, `${loggerName}: ${message}`, furtherInfo);
-             });
-             return await this.client.connect();
-        } catch (err) {
-            this._error(`Encountered error while connecting to cassandra node.`, err);
-            Promise.reject(err);
-        }
+        this.client.on('log', (level, loggerName, message, furtherInfo) => {
+            if (level === 'verbose') {
+                return;
+            }
+            level = level === 'info' ? 'log' : level;
+            this._logMessage(level, `${loggerName}: ${message}`, furtherInfo);
+        });
+        return await this.client.connect();
     }
 
     /**
@@ -75,28 +63,16 @@ class Client {
      */
 
     async execute(query, params, queryOptions) {
-        try {
-            const result = await this.client.execute(query, params, queryOptions);
-            this._success('Successfully executed the query.');
-            return result;
-        } catch (err) {
-            this._error(`Encountered error while executing query "${err.query}" on coordinator "${err.coordinator}".\n`, err.stack);
-            Promise.reject(err);
-        } 
+        const result = await this.client.execute(query, params, queryOptions);
+        return result;
     }
 
     /**
      * Only UPDATE, INSERT and DELETE statements are allowed.
      */
     async batchExecute(queries, queryOptions) {
-        try {
-            const result = await this.client.batch(queries, queryOptions);
-            this._success('Successfully batch executed the query.');
-            return result;
-        } catch (err) {
-            this._error(`Encountered error while batch executing query "${err.query}" on coordinator "${err.coordinator}".\n`, err.stack);
-            Promise.reject(err);  
-        }
+        const result = await this.client.batch(queries, queryOptions);
+        return result;
     }
     
     /**
@@ -122,25 +98,12 @@ class Client {
      * @param {Object} options - concurrent execution options.
      */
     async concurrentExecute(query, params, options) {
-        try {
-            const result = await cassandra.concurrent.executeConcurrent(this, query, params, options);
-            this._success('Successfully executed the queries concurrently.');
-            return result;
-        } catch (err) {
-            this._error(`Encountered error while batch executing query "${err.query}" on coordinator "${err.coordinator}".\n`, err.stack);
-            Promise.reject(err);
-        }
+        const result = await cassandra.concurrent.executeConcurrent(this, query, params, options);
+        return result;
     }
 
     async shutdown() {
-        try {
-            await this.client.shutdown();
-            this._success('Successfully disconnected all the client connections to all the cassandra hosts.')
-        } catch (err) {
-            this._error('Encountered error while shutting down client connections.', err);
-            Promise.reject(err);
-        }
-
+        return await this.client.shutdown();
     }
 
     _logMessage(msgType, message, data) {
