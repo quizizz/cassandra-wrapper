@@ -1,2 +1,2 @@
 # cassandra-wrapper
-A simple wrapper for Data Stax's nodejs cassandra client.
+A simple wrapper for `nodejs-driver` cassandra client.
