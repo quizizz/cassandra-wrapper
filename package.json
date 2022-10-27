@@ -1,6 +1,6 @@
 {
-  "name": "cassandra-wrapper",
-  "version": "0.1.0",
+  "name": "@quizizz/cassandra",
+  "version": "0.1.1",
   "description": "A simple client to interanct with Cassandra database.",
   "main": "index.js",
   "types": "types/index.d.ts",
@@ -18,6 +18,6 @@
   ],
   "license": "ISC",
   "dependencies": {
-    "cassandra-driver": "^4.6.3"
+    "cassandra-driver": "4.6.4"
   }
 }
